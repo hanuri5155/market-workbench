@@ -1,0 +1,44 @@
+/* frontend/src/components/StarfieldBg.css */
+
+/* 페이지 전체 뒤에 고정되는 우주 배경 */
+.starfield {
+  position: fixed;
+  inset: 0;
+  z-index: -1;          /* 모든 UI 뒤 */
+  pointer-events: none;
+  overflow: hidden;
+  /* 원본과 동일한 베이스 그라데이션 */
+  background: radial-gradient(
+    ellipse at bottom,
+    var(--c-starfield-start) 0%,
+    var(--c-starfield-end) 100%
+  );
+}
+
+/* 공통 별 레이어 */
+.stars {
+  position: absolute;
+  left: 0;
+  top: 0;
+  background: transparent;
+  animation: starScroll var(--dur, 50s) linear infinite;
+}
+
+/* 레이어별 점 크기와 속도 (원본: 1px/50s, 2px/100s, 3px/150s) */
+.stars--s { width: 1px; height: 1px; --dur: 50s; }
+.stars--m { width: 2px; height: 2px; --dur: 100s; }
+.stars--b { width: 3px; height: 3px; --dur: 150s; }
+
+/* 무한 스크롤용 복제 레이어(원본의 &:after 대체) */
+.stars--clone { top: 2000px; }
+
+/* 원본과 동일한 스크롤 애니메이션 */
+@keyframes starScroll {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-2000px); }
+}
+
+/* 모션 최소화 환경 배려 */
+@media (prefers-reduced-motion: reduce) {
+  .stars { animation: none; }
+}

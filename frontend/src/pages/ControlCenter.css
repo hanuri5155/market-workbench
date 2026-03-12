@@ -1,0 +1,142 @@
+/* frontend/src/pages/ControlCenter.css */
+
+/*  ControlCenter: 전략 섹션 레이아웃  */
+
+/* 이제 배경/그림자는 GlassScene이 담당하므로, 여기선 레이아웃만 */
+.cc-strategy-card,
+.cc-strategy-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 상단 Circle 버튼을 카드 안에서 가운데 정렬 */
+.cc-strategy-circle-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.cc-trading-circle {
+  width: 64px;
+  max-width: 40vw;
+}
+
+.cc-power-icon {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.cc-strategy-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cc-strategy-title,
+.cc-strategy-label {
+  color: var(--c-text-primary);
+}
+
+.cc-strategy-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.cc-strategy-sub,
+.cc-strategy-desc {
+  color: var(--c-text-muted);
+}
+
+.cc-strategy-sub {
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.cc-strategy-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cc-strategy-item.is-disabled {
+  opacity: 0.45;
+}
+
+.cc-strategy-texts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cc-strategy-label {
+  font-size: 0.92rem;
+  font-weight: 500;
+}
+
+.cc-strategy-desc {
+  font-size: 0.78rem;
+}
+
+/*  iOS Switch 스타일 (Uiverse.io 기반, prefix 적용)  */
+
+.cc-switch-container {
+  width: 51px;
+  height: 31px;
+  position: relative;
+}
+
+/* 기본 checkbox 숨기기 */
+.cc-switch-checkbox {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+/* 스위치 박스 */
+.cc-switch {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background-color: var(--c-ui-light);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease-out;
+}
+
+/* 동그란 슬라이더 */
+.cc-slider {
+  width: 27px;
+  height: 27px;
+  position: absolute;
+  left: calc(50% - 27px / 2 - 10px);
+  top: calc(50% - 27px / 2);
+  border-radius: 50%;
+  background: var(--c-white);
+  box-shadow:
+    0px 3px 8px rgba(0, 0, 0, 0.15),
+    0px 3px 1px rgba(0, 0, 0, 0.06);
+  transition: all 0.2s ease-out;
+  cursor: pointer;
+}
+
+/* ON 상태 (iOS green token) */
+.cc-switch-checkbox:checked + .cc-switch {
+  background-color: var(--c-success);
+}
+
+.cc-switch-checkbox:checked + .cc-switch .cc-slider {
+  left: calc(50% - 27px / 2 + 10px);
+  top: calc(50% - 27px / 2);
+}
+
+/* disabled 상태일 때 커서 모양만 변경 */
+.cc-switch-checkbox:disabled + .cc-switch,
+.cc-switch-checkbox:disabled + .cc-switch .cc-slider {
+  cursor: default;
+}

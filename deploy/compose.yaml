@@ -1,0 +1,72 @@
+services:
+  api:
+    image: ${API_IMAGE}
+    env_file:
+      - ./.env
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    networks:
+      - market-workbench-net
+    volumes:
+      - ./data/config:/app/backend/config:ro
+      - ./data/storage:/app/backend/storage
+      - ./data/logs/api:/app/backend/logs
+    healthcheck:
+      test: ["CMD","python","-c","import urllib.request,sys; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2).read(); sys.exit(0)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+
+  bot:
+    image: ${BOT_IMAGE}
+    env_file:
+      - ./.env
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - market-workbench-net
+    volumes:
+      - ./data/config:/app/backend/config:ro
+      - ./data/storage:/app/backend/storage
+      - ./data/logs/bot:/app/backend/logs
+    healthcheck:
+      test: ["CMD","python","-c","import os,time,sys; p=os.getenv('BOT_HEARTBEAT_PATH','/tmp/bot_heartbeat'); sys.exit(0) if os.path.exists(p) and (time.time()-os.path.getmtime(p) < 60) else sys.exit(1)"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+
+  mysql:
+    profiles: ["db"]
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-market_workbench}
+      MYSQL_USER: ${DB_USER:-market_workbench}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-market_workbenchpass}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
+    ports:
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  redis:
+    profiles: ["cache"]
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  market-workbench-net:
+    external: true

@@ -1,0 +1,67 @@
+/* frontend/src/components/CandleChart.css */
+
+.cchart-layout {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+}
+
+.cchart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.cchart-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.cchart-btn {
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+}
+
+.cchart-btn--time {
+  border: 1px solid rgba(255,255,255,0.2);
+  background: transparent;
+}
+
+.cchart-btn--time.is-active {
+  background: rgba(255,255,255,0.12);
+}
+
+.cchart-btn--toggle {
+  border: 1px solid rgba(255,255,255,0.2);
+  background: transparent;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.cchart-btn--toggle.is-active {
+  background: rgba(255,255,255,0.12);
+}
+
+.cchart-btn--latest {
+  border: 1px solid rgba(255,255,255,0.3);
+  background: rgba(255,255,255,0.06);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.cchart-canvas-wrap {
+  min-height: 480px;
+  width: 100%;
+}
+
+.cchart-host {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+}

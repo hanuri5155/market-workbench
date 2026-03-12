@@ -1,0 +1,123 @@
+name: Release (build -> push GHCR -> deploy OCI)
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.vars.outputs.tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Vars
+        id: vars
+        run: echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login GHCR (push)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Meta (api)
+        id: meta_api
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/market-workbench-api
+          tags: |
+            type=raw,value=${{ steps.vars.outputs.tag }}
+
+      - name: Build & Push (api)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile.api
+          push: true
+          tags: ${{ steps.meta_api.outputs.tags }}
+          labels: ${{ steps.meta_api.outputs.labels }}
+
+      - name: Meta (bot)
+        id: meta_bot
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/market-workbench-bot
+          tags: |
+            type=raw,value=${{ steps.vars.outputs.tag }}
+
+      - name: Build & Push (bot)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile.bot
+          push: true
+          tags: ${{ steps.meta_bot.outputs.tags }}
+          labels: ${{ steps.meta_bot.outputs.labels }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+
+    steps:
+      - name: Deploy via SSH (compose pull & up)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.OCI_HOST }}
+          username: ${{ secrets.OCI_USER }}
+          key: ${{ secrets.OCI_SSH_KEY }}
+          script: |
+            set -euo pipefail
+
+            cd /srv/market-workbench/deploy
+            TAG="${{ needs.build-and-push.outputs.tag }}"
+            echo "[DEPLOY] tag=$TAG"
+
+            # GHCR private 로그인
+            if [ -z "${{ secrets.GHCR_PAT }}" ] || [ -z "${{ secrets.GHCR_USER }}" ]; then
+              echo "[DEPLOY] GHCR_PAT/GHCR_USER is required for private images" >&2
+              exit 1
+            fi
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.GHCR_USER }}" --password-stdin
+
+            # 서버 .env에 이미지 태그 반영
+            grep -q '^API_IMAGE=' .env \
+              && sed -i "s|^API_IMAGE=.*|API_IMAGE=ghcr.io/${{ github.repository_owner }}/market-workbench-api:${TAG}|g" .env \
+              || echo "API_IMAGE=ghcr.io/${{ github.repository_owner }}/market-workbench-api:${TAG}" >> .env
+
+            grep -q '^BOT_IMAGE=' .env \
+              && sed -i "s|^BOT_IMAGE=.*|BOT_IMAGE=ghcr.io/${{ github.repository_owner }}/market-workbench-bot:${TAG}|g" .env \
+              || echo "BOT_IMAGE=ghcr.io/${{ github.repository_owner }}/market-workbench-bot:${TAG}" >> .env
+
+            docker compose -p market-workbench --env-file .env -f compose.yaml pull
+            docker compose -p market-workbench --env-file .env -f compose.yaml up -d
+
+            # healthz 확인 (실패 시 job 실패)
+            curl -fsS http://127.0.0.1:8000/healthz
+
+            # 상태 출력
+            docker compose -p market-workbench --env-file .env -f compose.yaml ps
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: needs.deploy.result == 'success'
+    steps:
+      - name: Create draft GitHub Release (auto notes)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          draft: true
+          generate_release_notes: true
