@@ -1,0 +1,184 @@
+/* frontend/src/components/AppleGlassNav.css */
+
+/* ==== 테마 변수(기본값) ==== */
+/* 공통 색상 토큰은 styles/tokens.css */
+:root {
+  --glass-reflex-dark: 1;
+  --glass-reflex-light: 1;
+
+  /* 레이아웃 수치(4개 탭 기준) */
+  --step: 76px;                  /* 버블 이동 간격(원본과 동일) */
+  --bubble: 84px;                /* ::after 버블 너비(원본과 동일) */
+  --height: 50px;
+  --pad-x: 12px;
+  --pad-y: 8px;
+
+  /* 총 너비: 0, 76, 152, 228 => 마지막 위치(228) + bubble(84) + 여유 */
+  --width: 296px;
+}
+
+/* ==== CodePen: .switcher 컨테이너 ==== */
+.switcher {
+  position: fixed;
+  z-index: 1;
+  top: 15px;                   
+  left: 50%;
+  translate: -50%;
+  display: flex;
+  align-items: center;
+  /* gap: 8px;  ← 탭 사이 간격은 옵션 쪽에서 margin으로 처리 */
+  width: var(--width);
+  max-width: var(--width);
+  height: var(--height);
+  box-sizing: border-box;
+  padding: var(--pad-y) var(--pad-x) var(--pad-y);
+  margin: 0 auto;
+  border: none;
+  border-radius: 99em;
+  font-size: 20px;
+  background-color: color-mix(in srgb, var(--c-glass) 12%, transparent);
+  backdrop-filter: blur(8px) url(#switcher) saturate(var(--saturation));
+  -webkit-backdrop-filter: blur(8px) saturate(var(--saturation));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--c-light) calc(var(--glass-reflex-light) * 10%), transparent),
+    inset 1.8px 3px 0px -2px color-mix(in srgb, var(--c-light) calc(var(--glass-reflex-light) * 90%), transparent),
+    inset -2px -2px 0px -2px color-mix(in srgb, var(--c-light) calc(var(--glass-reflex-light) * 80%), transparent),
+    inset -3px -8px 1px -6px color-mix(in srgb, var(--c-light) calc(var(--glass-reflex-light) * 60%), transparent),
+    inset -0.3px -1px 4px 0px color-mix(in srgb, var(--c-dark) calc(var(--glass-reflex-dark) * 12%), transparent),
+    inset -1.5px 2.5px 0px -2px color-mix(in srgb, var(--c-dark) calc(var(--glass-reflex-dark) * 20%), transparent),
+    inset 0px 3px 4px -2px color-mix(in srgb, var(--c-dark) calc(var(--glass-reflex-dark) * 20%), transparent),
+    inset 2px -6.5px 1px -4px color-mix(in srgb, var(--c-dark) calc(var(--glass-reflex-dark) * 10%), transparent),
+    0px 1px 5px 0px color-mix(in srgb, var(--c-dark) calc(var(--glass-reflex-dark) * 10%), transparent),
+    0px 6px 16px 0px color-mix(in srgb, var(--c-dark) calc(var(--glass-reflex-dark) * 8%), transparent);
+  transition: background-color 400ms cubic-bezier(1, 0, 0.4, 1),
+              box-shadow 400ms cubic-bezier(1, 0, 0.4, 1);
+}
+
+.switcher__filter {
+  position: absolute;/* 
+  width: 0;
+  height: 0; */
+  z-index: -1;
+}
+
+/* 접근성: 레전드는 화면에서 숨김 */
+.switcher__legend {
+  position: absolute;
+  width: 1px; height: 1px; margin: -1px; border: 0; padding: 0;
+  white-space: nowrap; clip-path: inset(100%); clip: rect(0 0 0 0); overflow: hidden;
+}
+
+/* 라디오 숨김 */
+.switcher__input {
+  clip: rect(0 0 0 0);
+  clip-path: inset(100%);
+  height: 1px; width: 1px; overflow: hidden; position: absolute; white-space: nowrap;
+}
+
+/* 아이콘(이모지/텍스트) */
+.switcher__icon {
+  /* 아이콘을 가운데 정렬하기 위해 flex로 변경 */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  transition: scale 200ms cubic-bezier(0.5, 0, 0, 1);
+}
+
+/* 아이콘 공통 스타일 */
+.switcher__icon :is(.control-icon, .setting-icon, .chart-icon, .stats-icon) {
+  width: 26px;          /* 기본 26px */
+  height: 26px;
+  display: block;
+  object-fit: contain;  /* 아이콘 비율 유지 */
+}
+
+
+
+/* 옵션 셀 */
+.switcher__option {
+  --c: var(--c-content);
+  display: flex; justify-content: center; align-items: center;
+  padding: 0 16px;
+  width: 68px; height: 100%;
+  box-sizing: border-box;
+  border-radius: 99em;
+  opacity: 1;
+  transition: all 160ms;
+  margin-right: 8px; 
+}
+.switcher__option:last-of-type { margin-right: 0; }
+.switcher__option:hover { --c: var(--c-action); cursor: pointer; }
+.switcher__option:hover .switcher__icon { scale: 1.2; }
+.switcher__option:has(input:checked) { --c: var(--c-content); cursor: auto; }
+.switcher__option:has(input:checked) .switcher__icon { scale: 1; }
+
+/* 토글 버블 */
+.switcher::after {
+  content: "";
+  position: absolute;
+  left: 4px; top: 4px;
+  display: block;
+  width: var(--bubble);
+  height: calc(100% - 10px);
+  border-radius: 99em;
+  background-color: color-mix(in srgb, var(--c-glass) 36%, transparent);
+  z-index: -1;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--c-light) calc(var(--glass-reflex-light) * 10%), transparent),
+    inset 2px 1px 0px -1px color-mix(in srgb, var(--c-light) calc(var(--glass-reflex-light) * 90%), transparent),
+    inset -1.5px -1px 0px -1px color-mix(in srgb, var(--c-light) calc(var(--glass-reflex-light) * 80%), transparent),
+    inset -2px -6px 1px -5px color-mix(in srgb, var(--c-light) calc(var(--glass-reflex-light) * 60%), transparent),
+    inset -1px 2px 3px -1px color-mix(in srgb, var(--c-dark) calc(var(--glass-reflex-dark) * 20%), transparent),
+    inset 0px -4px 1px -2px color-mix(in srgb, var(--c-dark) calc(var(--glass-reflex-dark) * 10%), transparent),
+    0px 3px 6px 0px color-mix(in srgb, var(--c-dark) calc(var(--glass-reflex-dark) * 8%), transparent);
+  transition: background-color 400ms cubic-bezier(1, 0, 0.4, 1),
+              box-shadow 400ms cubic-bezier(1, 0, 0.4, 1),
+              translate 400ms cubic-bezier(1, 0, 0.4, 1);
+}
+
+/* 4개 탭 위치 (1..4) */
+.switcher:has(input[c-option="1"]:checked)::after { translate: 0 0; transform-origin: right; animation: scaleToggle1 440ms ease; }
+.switcher:has(input[c-option="2"]:checked)::after { translate: 76px 0; animation: scaleToggle2 440ms ease; }
+.switcher:has(input[c-option="3"]:checked)::after { translate: 152px 0; animation: scaleToggle3 440ms ease; }
+.switcher:has(input[c-option="4"]:checked)::after { translate: 228px 0; transform-origin: left; animation: scaleToggle4 440ms ease; }
+
+/* 이동 방향에 따른 transform-origin (간략화) */
+.switcher[c-previous="1"]:has(input[c-option="2"]:checked),
+.switcher[c-previous="1"]:has(input[c-option="3"]:checked),
+.switcher[c-previous="1"]:has(input[c-option="4"]:checked) { transform-origin: left; }
+.switcher[c-previous="4"]:has(input[c-option="3"]:checked),
+.switcher[c-previous="4"]:has(input[c-option="2"]:checked),
+.switcher[c-previous="4"]:has(input[c-option="1"]:checked) { transform-origin: right; }
+
+/* 스케일 애니메이션(원본 패턴) */
+@keyframes scaleToggle1 { 0%{scale:1 1;} 50%{scale:1.1 1;} 100%{scale:1 1;} }
+@keyframes scaleToggle2 { 0%{scale:1 1;} 50%{scale:1.2 1;} 100%{scale:1 1;} }
+@keyframes scaleToggle3 { 0%{scale:1 1;} 50%{scale:1.1 1;} 100%{scale:1 1;} }
+@keyframes scaleToggle4 { 0%{scale:1 1;} 50%{scale:1.1 1;} 100%{scale:1 1;} }
+
+/* 모바일 공통: 텔레그램 하단 탭바 비율에 가깝게 조정 */
+@media (max-width: 600px) {
+  :root {
+    --width: 320px;
+    --step: 76px;
+    --bubble: 84px;
+    --height: 62px;
+    --pad-y: 8px;
+  }
+
+  .switcher {
+    top: auto;
+    bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 20px));
+  }
+
+  .switcher__icon :is(.control-icon, .setting-icon, .chart-icon, .stats-icon) {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+/* iPhone 14 Pro(393px) 포함 소형 모바일 */
+@media (max-width: 420px) {
+  :root { --width: 300px; --step: 72px; --bubble: 80px; --height: 62px; }
+}

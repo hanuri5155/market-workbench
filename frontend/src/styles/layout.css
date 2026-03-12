@@ -1,0 +1,17 @@
+/* frontend/src/styles/layout.css */
+
+/* 전체 높이 보장 */
+html, body, #root, #app-root { height: 100%; }
+
+/* 기본 여백 제거 */
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+#root,
+#app-root {
+  width: 100%;
+  max-width: 100vw;     /* 뷰포트보다 더 넓어지지 않게 */
+}

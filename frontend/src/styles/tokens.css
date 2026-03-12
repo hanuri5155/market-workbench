@@ -1,0 +1,42 @@
+/* frontend/src/styles/tokens.css */
+
+:root {
+  /* Core colors */
+  --c-white: #ffffff;
+  --c-black: #000000;
+
+  --c-text-primary: #f5f5f7;
+  --c-text-muted: #a0a0b0;
+  --c-text-bright: #f9fafb;
+
+  --c-glass-base: #bbbbbc;
+  --c-nav-content: #111;
+  --c-nav-action: #03d5ff;
+
+  --c-success: #69C86C;
+  --c-success-strong: #4ade80;
+  --c-danger: #ff6b81;
+  --c-ui-light: #e9e9eb;
+
+  --c-starfield-start: #1B2735;
+  --c-starfield-end: #090A0F;
+
+  /* Glass tokens */
+  --glass-c-light: var(--c-white);
+  --glass-c-dark: var(--c-black);
+  --glass-c-glass: var(--c-glass-base);
+  --glass-saturation: 150%;
+  --glass-bg: color-mix(in srgb, var(--glass-c-glass) 12%, transparent);
+
+  /* Apple glass nav tokens (shared color base) */
+  --c-light: var(--c-white);
+  --c-dark: var(--c-black);
+  --c-glass: var(--c-glass-base);
+  --c-content: var(--c-nav-content);
+  --c-action: var(--c-nav-action);
+  --saturation: var(--glass-saturation);
+
+  /* Motion */
+  --circle-press-duration: 800ms;
+  --circle-fill-duration: 0.45s;
+}

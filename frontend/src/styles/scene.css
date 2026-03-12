@@ -1,0 +1,71 @@
+/* frontend/src/styles/scene.css */
+
+/* 씬은 절대 배치되어 서로 겹치며 전환 */
+.scene {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;       /* 카드가 상단 중앙에 위치 */
+  opacity: 0;
+  transform: translateY(12px) scale(0.995);
+  transition: opacity 300ms ease, transform 300ms ease;
+  pointer-events: none;
+  will-change: opacity, transform;
+}
+.scene.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+/* 씬 내부 래퍼: 카드 크기를 결정 (컨테이너는 여길 100% 채움) */
+.scene-inner {
+  position: relative;
+  width: min(100%, 1200px);        /* 필요 시 최대 너비 조정 */
+  box-sizing: border-box;
+}
+
+/* liquid-glass 컨테이너가 붙을 레이어 */
+.lg-card-layer {
+  position: relative;              /* 실제 컨테이너 element가 100% 채움 */
+  width: 100%;
+  height: 100%;
+  min-height: inherit;             /* scene-inner의 minHeight 상속 */
+}
+
+/* 리액트 콘텐츠는 컨테이너 위에 덮는 형제 오버레이 */
+.lg-overlay-slot {
+  position: absolute;
+  inset: 0;
+  padding: 16px 20px;              /* 카드 안 여백 */
+  box-sizing: border-box;
+  pointer-events: auto;
+}
+
+
+:root {
+  /* 네비 높이 변수(기본 120px) */
+  --nav-h: 120px;
+}
+
+/*  상단 네비 제외 영역을 '센터 그리드'로 만드는 래퍼  */
+.viewport-grid {
+  position: relative;
+  /* 네비 높이만큼 '물리적으로' 아래로 내림 → 카드가 네비 뒤로 안 올라옴 */
+  margin-top: var(--nav-h);
+  /* 가시 높이에서도 네비 높이만큼 제외 */
+  height: calc(100dvh - var(--nav-h));
+  display: grid;
+  place-items: center;   /* 씬(.scene)을 가운데 정렬 */
+}
+
+/*  다중 카드 배치를 위한 그리드 유틸(페이지 내부에서 사용)  */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 10px;
+  align-items: start;
+  justify-items: center;            /* 카드 자체를 그리드 셀 중앙에 */
+  width: min(100%, 1200px);
+  margin: 0 auto;
+}

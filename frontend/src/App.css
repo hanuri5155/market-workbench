@@ -1,0 +1,27 @@
+/* frontend/src/App.css */
+
+.app-nav {
+  position: fixed;
+  top: 24px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  z-index: 20;
+}
+
+.app-nav-inner {
+  pointer-events: auto;
+}
+
+.app-routes {
+  padding-top: 80px; /* 네비 높이만큼 여백 */
+}
+
+/* 모바일 공통: 상단 네비 여백 제거 + 하단 네비 여백 확보 */
+@media (max-width: 600px) {
+  .app-routes {
+    padding-top: 16px;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 112px);
+  }
+}

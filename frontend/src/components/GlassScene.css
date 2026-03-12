@@ -1,0 +1,111 @@
+/* frontend/src/components/GlassScene.css */
+
+/* ===== 공통 토큰은 styles/tokens.css ===== */
+
+/* ===== 기본 유리 패널 ===== */
+.glass-surface{
+  position: relative;
+  display: block;
+  padding: 20px;
+  border-radius: 24px;
+
+  color: var(--c-white);
+
+  background-color: var(--glass-bg);
+  backdrop-filter: blur(13px) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(13px) saturate(var(--glass-saturation));
+
+  /* 입체감 */
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--glass-c-light) 10%, transparent),
+    inset 2px 1px 0px -1px color-mix(in srgb, var(--glass-c-light) 90%, transparent),
+    inset -1.5px -1px 0px -1px color-mix(in srgb, var(--glass-c-light) 80%, transparent),
+    inset -2px -6px 1px -5px color-mix(in srgb, var(--glass-c-light) 60%, transparent),
+    inset -1px 2px 3px -1px color-mix(in srgb, var(--glass-c-dark) 20%, transparent),
+    inset 0px -4px 1px -2px color-mix(in srgb, var(--glass-c-dark) 10%, transparent),
+    0px 3px 6px 0px color-mix(in srgb, var(--glass-c-dark) 8%, transparent);
+
+  transition: opacity 240ms ease, transform 240ms ease, box-shadow 400ms ease;
+}
+
+/* 가시성 전환(기존 visible 대응) */
+.glass-surface[data-visible="0"]{
+  opacity: .0;
+  transform: translateY(4px) scale(.98);
+  pointer-events: none;
+}
+.glass-surface[data-visible="1"]{
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.glass-surface--pill   { border-radius: 999px; }
+
+.glass-surface--circle {
+  border-radius: 50%;
+  /* 가로세로 1:1 비율 (부모 폭 기준) */
+  aspect-ratio: 1 / 1;
+
+  /* 안의 내용 중앙 정렬 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* 애니메이션용 준비 */
+  position: relative;
+  overflow: hidden;
+
+  /* hover 때 transform이 부드럽게 움직이도록 */
+  transition: transform 200ms ease-out;
+}
+
+/*  circle 안의 실제 콘텐츠(아이콘 등)는 위에 보이도록 */
+.glass-surface--circle > * {
+  position: relative;
+  z-index: 1;
+}
+
+/*  Circle 버튼 배경 fill 레이어 (기본은 숨김) */
+.glass-surface--circle::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--c-success);        /* iOS green (tokens) */
+  opacity: 0;
+  transition:
+    opacity var(--circle-fill-duration) ease-out,
+    transform var(--circle-fill-duration) ease-out;
+  z-index: 0;
+}
+
+/*  ON 상태일 때: 초록색이 부드럽게 꽉 차도록 */
+.glass-surface--circle.glass-surface--circle-on::before {
+  opacity: 1;
+}
+
+
+/*  클릭 애니메이션 키프레임
+   1.06 → 0.98 → 1.02 → 1.0
+*/
+@keyframes circle-press-bounce {
+  0%   { transform: scale(1.00); }
+  20%   { transform: scale(1.12); }
+  40%  { transform: scale(0.98); }
+  60%  { transform: scale(1.03); }
+  100% { transform: scale(1.0); }
+}
+
+/*  GlassScene에서 붙여 줄 클릭 중 상태 클래스 */
+.glass-surface--circle.glass-surface--circle-press {
+  animation-name: circle-press-bounce;
+  animation-duration: var(--circle-press-duration);
+  animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
+}
+
+/* 좁은 화면에서 패딩 조정 */
+@media (max-width: 640px){
+  .glass-surface{ padding: 14px; }
+}

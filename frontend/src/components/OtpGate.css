@@ -1,0 +1,103 @@
+/* frontend/src/components/OtpGate.css */
+
+.otp-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;              /* 네비/카드보다 위 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.otp-card {
+  width: 330px;
+  padding: 20px 16px 16px;
+  max-width: 90vw;
+  box-sizing: border-box;
+  border-radius: 24px;
+  background: rgba(15, 15, 20, 0.95);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  color: var(--c-white);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    sans-serif;
+}
+
+.otp-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.otp-sub {
+  font-size: 13px;
+  opacity: 0.8;
+  margin-bottom: 16px;
+}
+
+.otp-input-row {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.otp-paste-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.otp-paste-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+}
+
+.otp-paste-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* 기본: 모바일/패드용 인풋 */
+.otp-input {
+  width: 22px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--c-white);
+  font-size: 20px;
+  text-align: center;
+  outline: none;
+}
+
+/* 데스크탑 카드 안에 있을 때만 인풋 크게 */
+.otp-card-desktop .otp-input {
+  width: 40px;
+  height: 48px;
+}
+
+.otp-input:focus {
+  border-color: var(--c-white);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8);
+}
+
+.otp-error {
+  font-size: 12px;
+  color: var(--c-danger);
+  min-height: 16px;
+  text-align: center;
+  white-space: pre-line;
+}
+
+.otp-status {
+  font-size: 11px;
+  opacity: 0.6;
+  text-align: right;
+}
