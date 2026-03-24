@@ -1,0 +1,234 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+COMPOSE_DIR="${MARKET_WORKBENCH_COMPOSE_DIR:-/opt/market-workbench/compose}"
+COMPOSE_PROJECT="${COMPOSE_PROJECT_NAME:-market-workbench}"
+COMPOSE_PROFILES=()
+if [[ -n "${MARKET_WORKBENCH_COMPOSE_PROFILES:-}" ]]; then
+  read -r -a _PROFILE_NAMES <<< "${MARKET_WORKBENCH_COMPOSE_PROFILES}"
+  for profile in "${_PROFILE_NAMES[@]}"; do
+    COMPOSE_PROFILES+=(--profile "${profile}")
+  done
+fi
+COMPOSE_CMD=(docker compose -p "${COMPOSE_PROJECT}" "${COMPOSE_PROFILES[@]}")
+METRICS_DIR="${MARKET_WORKBENCH_METRICS_DIR:-/var/lib/zabbix/market_workbench_metrics}"
+METRICS_FILE="${METRICS_DIR}/api_ws.tsv"
+LOCK_FILE="/run/market-workbench-api-ws-metrics-probe.lock"
+METRICS_URL="http://127.0.0.1:8000/internal/chart-websocket-metrics"
+INTERVALS=(15 30 60 240)
+NUMERIC_METRICS=(
+  "api_ws.active_connections"
+  "api_ws.subscribed_connections"
+  "api_ws.unsubscribed_connections"
+  "api_ws.subscriptions_total"
+  "api_ws.connect_total"
+  "api_ws.disconnect_total"
+  "api_ws.disconnect_cleanup_total"
+  "api_ws.client_disconnect_total"
+  "api_ws.server_close_total"
+  "api_ws.close_error_total"
+  "api_ws.broadcast_total"
+  "api_ws.broadcast_last_epoch"
+  "api_ws.broadcast_age_seconds"
+  "api_ws.broadcast_last_duration_ms"
+  "api_ws.broadcast_duration_p50_ms"
+  "api_ws.broadcast_duration_p95_ms"
+  "api_ws.broadcast_duration_p99_ms"
+  "api_ws.broadcast_last_matched_clients"
+  "api_ws.broadcast_matched_clients_p95"
+  "api_ws.broadcast_no_match_total"
+  "api_ws.broadcast_error_total"
+  "api_ws.broadcast_send_failure_total"
+  "api_ws.send_total"
+  "api_ws.send_failure_total"
+  "api_ws.active_send_failure_total"
+  "api_ws.closing_send_failure_total"
+  "api_ws.teardown_close_race_total"
+  "api_ws.send_skipped_closing_total"
+  "api_ws.send_last_duration_max_ms"
+  "api_ws.send_duration_p95_ms"
+  "api_ws.send_duration_p99_ms"
+  "api_ws.slow_send_250ms_total"
+  "api_ws.slow_send_1000ms_total"
+  "api_ws.error_total"
+)
+
+NOW="$(date +%s)"
+ERRORS=0
+
+mark_error() {
+  ERRORS=$((ERRORS + 1))
+  printf 'market-workbench-api-ws-metrics-probe warning: %s\n' "$*" >&2
+}
+
+emit() {
+  local key="$1"
+  local arg1="${2:--}"
+  local arg2="${3:--}"
+  local value="$4"
+  printf '%s\t%s\t%s\t%s\t%s\n' "${key}" "${arg1}" "${arg2}" "${value}" "${NOW}" >> "${TMP_FILE}"
+}
+
+previous_metric() {
+  local key="$1"
+  local arg1="${2:--}"
+  local arg2="${3:--}"
+  awk -F '\t' -v k="${key}" -v a1="${arg1}" -v a2="${arg2}" '
+    $1 !~ /^#/ && $1 == k && $2 == a1 && $3 == a2 { value = $4; found = 1 }
+    END { if (found) print value; }
+  ' "${METRICS_FILE}" 2>/dev/null || true
+}
+
+emit_cached_or_zero() {
+  local key arg1="${2:--}" arg2="${3:--}" value
+  key="$1"
+  value="$(previous_metric "${key}" "${arg1}" "${arg2}")"
+  if [[ ! "${value}" =~ ^[0-9]+$ ]]; then
+    value="0"
+  fi
+  emit "${key}" "${arg1}" "${arg2}" "${value}"
+}
+
+emit_fallback_metrics() {
+  local metric tf
+  for metric in "${NUMERIC_METRICS[@]}"; do
+    emit_cached_or_zero "${metric}" "-" "-"
+  done
+  emit "api_ws.last_error_code" "-" "-" "endpoint_read_failed"
+  for tf in "${INTERVALS[@]}"; do
+    emit_cached_or_zero "api_ws.subscriptions" "${tf}" "-"
+  done
+}
+
+emit_probe_health() {
+  local status last_success age
+
+  if (( ERRORS == 0 )); then
+    status="1"
+    last_success="${NOW}"
+    age="0"
+  else
+    status="0"
+    last_success="$(previous_metric "api_ws.last_success_epoch" "-" "-")"
+    last_success="${last_success:-0}"
+    if [[ "${last_success}" =~ ^[0-9]+$ ]] && (( last_success > 0 && NOW >= last_success )); then
+      age="$((NOW - last_success))"
+    else
+      age="999999"
+    fi
+  fi
+
+  emit "api_ws.status" "-" "-" "${status}"
+  emit "api_ws.last_success_epoch" "-" "-" "${last_success}"
+  emit "api_ws.age_seconds" "-" "-" "${age}"
+  emit "api_ws.error_count" "-" "-" "${ERRORS}"
+}
+
+collect_api_ws_metrics() {
+  local output
+
+  if ! output="$(
+    timeout 15s "${COMPOSE_CMD[@]}" exec -T api python - "${METRICS_URL}" "${NOW}" <<'PY'
+import json
+import sys
+import urllib.request
+
+url = sys.argv[1]
+ts = sys.argv[2]
+with urllib.request.urlopen(url, timeout=5) as response:
+    payload = json.load(response)
+
+
+def number(name: str, default: int = 0) -> int:
+    value = payload.get(name, default)
+    try:
+        return max(0, int(float(value)))
+    except Exception:
+        return default
+
+
+def text(name: str) -> str:
+    value = str(payload.get(name, "") or "")
+    return "".join(ch if ch.isalnum() or ch in {"_", "-"} else "_" for ch in value)[:64]
+
+
+rows = [
+    ("api_ws.active_connections", "-", "-", number("active_connections")),
+    ("api_ws.subscribed_connections", "-", "-", number("subscribed_connections")),
+    ("api_ws.unsubscribed_connections", "-", "-", number("unsubscribed_connections")),
+    ("api_ws.subscriptions_total", "-", "-", number("subscriptions_total")),
+    ("api_ws.connect_total", "-", "-", number("connect_total")),
+    ("api_ws.disconnect_total", "-", "-", number("disconnect_total")),
+    ("api_ws.disconnect_cleanup_total", "-", "-", number("disconnect_cleanup_total")),
+    ("api_ws.client_disconnect_total", "-", "-", number("client_disconnect_total")),
+    ("api_ws.server_close_total", "-", "-", number("server_close_total")),
+    ("api_ws.close_error_total", "-", "-", number("close_error_total")),
+    ("api_ws.broadcast_total", "-", "-", number("broadcast_total")),
+    ("api_ws.broadcast_last_epoch", "-", "-", number("broadcast_last_epoch")),
+    ("api_ws.broadcast_age_seconds", "-", "-", number("broadcast_age_seconds")),
+    ("api_ws.broadcast_last_duration_ms", "-", "-", number("broadcast_last_duration_ms")),
+    ("api_ws.broadcast_duration_p50_ms", "-", "-", number("broadcast_duration_p50_ms")),
+    ("api_ws.broadcast_duration_p95_ms", "-", "-", number("broadcast_duration_p95_ms")),
+    ("api_ws.broadcast_duration_p99_ms", "-", "-", number("broadcast_duration_p99_ms")),
+    ("api_ws.broadcast_last_matched_clients", "-", "-", number("broadcast_last_matched_clients")),
+    ("api_ws.broadcast_matched_clients_p95", "-", "-", number("broadcast_matched_clients_p95")),
+    ("api_ws.broadcast_no_match_total", "-", "-", number("broadcast_no_match_total")),
+    ("api_ws.broadcast_error_total", "-", "-", number("broadcast_error_total")),
+    ("api_ws.broadcast_send_failure_total", "-", "-", number("broadcast_send_failure_total")),
+    ("api_ws.send_total", "-", "-", number("send_total")),
+    ("api_ws.send_failure_total", "-", "-", number("send_failure_total")),
+    ("api_ws.active_send_failure_total", "-", "-", number("active_send_failure_total")),
+    ("api_ws.closing_send_failure_total", "-", "-", number("closing_send_failure_total")),
+    ("api_ws.teardown_close_race_total", "-", "-", number("teardown_close_race_total")),
+    ("api_ws.send_skipped_closing_total", "-", "-", number("send_skipped_closing_total")),
+    ("api_ws.send_last_duration_max_ms", "-", "-", number("send_last_duration_max_ms")),
+    ("api_ws.send_duration_p95_ms", "-", "-", number("send_duration_p95_ms")),
+    ("api_ws.send_duration_p99_ms", "-", "-", number("send_duration_p99_ms")),
+    ("api_ws.slow_send_250ms_total", "-", "-", number("slow_send_250ms_total")),
+    ("api_ws.slow_send_1000ms_total", "-", "-", number("slow_send_1000ms_total")),
+    ("api_ws.error_total", "-", "-", number("error_total")),
+    ("api_ws.last_error_code", "-", "-", text("last_error_code")),
+]
+
+by_tf = payload.get("subscriptions_by_tf") or {}
+for tf in ("15", "30", "60", "240"):
+    rows.append(("api_ws.subscriptions", tf, "-", max(0, int(by_tf.get(tf, 0) or 0))))
+
+for row in rows:
+    print("\t".join(str(item) for item in (*row, ts)))
+PY
+  )"; then
+    mark_error "API websocket metrics endpoint read failed"
+    emit_fallback_metrics
+    return
+  fi
+
+  printf '%s\n' "${output}" >> "${TMP_FILE}"
+}
+
+install -d -o root -g zabbix -m 0750 "${METRICS_DIR}"
+
+exec 9>"${LOCK_FILE}"
+if ! flock -n 9; then
+  exit 0
+fi
+
+TMP_FILE="$(mktemp "${METRICS_DIR}/.api_ws.tsv.tmp.XXXXXX")"
+trap 'rm -f "${TMP_FILE}"' EXIT
+
+{
+  printf '# key\targ1\targ2\tvalue\tunix_ts\n'
+} > "${TMP_FILE}"
+
+if ! cd "${COMPOSE_DIR}"; then
+  mark_error "compose directory unavailable: ${COMPOSE_DIR}"
+else
+  collect_api_ws_metrics
+fi
+
+emit_probe_health
+
+chown root:zabbix "${TMP_FILE}"
+chmod 0640 "${TMP_FILE}"
+mv "${TMP_FILE}" "${METRICS_FILE}"
+trap - EXIT

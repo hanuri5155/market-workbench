@@ -1,0 +1,318 @@
+/* frontend/src/components/ZoneNotificationList.css */
+
+.zone-noti-root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 5px;
+  box-sizing: border-box;
+}
+
+.zone-noti-header {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  /* text-transform: uppercase; */
+  opacity: 0.8;
+  margin-bottom: 8px;
+}
+
+.zone-noti-scroll {
+  flex: 1;
+  overflow-y: auto;
+  /*  위/아래 여백을 추가해서 hover 시 잘리지 않도록 */
+  padding: 6px 4px 10px;
+  box-sizing: border-box;
+}
+
+.zone-noti-empty {
+  font-size: 12px;
+  opacity: 0.6;
+  padding: 4px 4px;
+}
+
+/* 첫번째/마지막 카드가 컨테이너 경계에 딱 붙지 않도록 버퍼 영역 추가 */
+.zone-noti-scroll::before,
+.zone-noti-scroll::after {
+  content: "";
+  display: block;
+  height: 6px; /* hover 변형(translateY -6px, scale 1.01) 대비 버퍼 */
+}
+
+/* iOS 스타일 Notification 카드 */
+.zone-noti-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 10px 14px;
+  margin-bottom: 8px;
+
+  border-radius: 18px;
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.09),
+    rgba(255, 255, 255, 0.02)
+  );
+
+  color: var(--c-text-bright);
+  font-size: 12px;
+  line-height: 1.3;
+
+  /*  호버/연동 시 애니메이션 */
+  transition: transform 0.22s cubic-bezier(0.19, 1, 0.22, 1),
+              box-shadow 0.22s ease-out,
+              opacity 0.22s ease-out;
+}
+
+/* Long/Short 구분 Pill */
+.zone-noti-side-pill {
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  background: transparent;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-right: 6px;
+  cursor: pointer;
+}
+
+.zone-noti-side-pill:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.9);
+  outline-offset: 2px;
+}
+
+.zone-noti-side-pill.long {
+  background: rgba(8, 153, 129, 0.20);
+  color: rgb(6, 187, 156);
+}
+
+.zone-noti-side-pill.short {
+  background: rgba(242, 54, 69, 0.2);
+  color: rgba(242, 54, 69, 1);
+}
+
+.zone-noti-main {
+  display: flex;
+  align-items: baseline;
+  flex: 1;
+  min-width: 0;
+}
+
+.zone-noti-text-line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.zone-noti-percentage {
+  margin-left: 8px;
+  font-weight: 600;
+}
+
+/*  오른쪽 edit 아이콘 버튼 */
+.zone-noti-edit-btn {
+  margin-left: 8px;
+  flex-shrink: 0;
+
+  background: transparent;
+  border: none;
+  padding: 0;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+}
+
+.zone-noti-edit-btn:hover {
+  opacity: 1;
+  transform: scale(1.05);
+}
+
+.zone-noti-edit-icon {
+  width: 14px;
+  height: 14px;
+  pointer-events: none; /* 클릭 영역은 버튼 전체로 */
+}
+
+
+/* 살짝 쌓여 보이게 하는 효과 (위쪽 카드가 더 또렷하게) */
+.zone-noti-item:nth-child(n + 2) {
+  transform: translateY(-2px) scale(0.99);
+  opacity: 0.92;
+}
+
+.zone-noti-item:nth-child(n + 3) {
+  transform: translateY(-4px) scale(0.985);
+  opacity: 0.88;
+}
+
+/* 호버되거나 차트와 연동된 카드가 살짝 떠오르게 */
+.zone-noti-item:hover,
+.zone-noti-item.is-hovered {
+  transform: translateY(-6px) scale(1.01); /* 기존 nth-child transform 덮어씀 */
+  opacity: 1;
+  z-index: 10;
+}
+
+/* 활성 상태일 때: 더 밝게 */
+.zone-noti-item.is-active {
+  opacity: 1;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.38),
+    rgba(255, 255, 255, 0.24)
+  );
+}
+
+/* 스크롤 막대 최소화 */
+.zone-noti-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.zone-noti-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+}
+
+/* ===== 편집 모달 ===== */
+.zone-edit-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.zone-edit-modal {
+  width: 320px;
+  max-width: 90vw;
+  padding: 16px 18px 14px;
+  border-radius: 18px;
+
+  background: radial-gradient(
+    circle at top left,
+    rgba(255, 255, 255, 0.08),
+    rgba(7, 10, 20, 0.96)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7);
+
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+
+  color: var(--c-white);
+  font-size: 13px;
+}
+
+.zone-edit-modal-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.zone-edit-modal-subtitle,
+.zone-edit-help {
+  opacity: 0.7;
+}
+
+.zone-edit-modal-subtitle {
+  font-size: 11px;
+  margin-bottom: 12px;
+}
+
+.zone-edit-modal-row {
+  margin-bottom: 10px;
+}
+
+.zone-edit-label,
+.zone-edit-percent-suffix {
+  font-size: 11px;
+}
+
+.zone-edit-label {
+  display: block;
+  opacity: 0.85;
+  margin-bottom: 4px;
+}
+
+.zone-edit-input {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 6px 10px;
+  background: rgba(3, 6, 16, 0.95);
+  color: var(--c-white);
+  font-size: 12px;
+  outline: none;
+}
+
+.zone-edit-input:focus {
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+.zone-edit-height-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.zone-edit-percent-suffix {
+  opacity: 0.8;
+}
+
+.zone-edit-slider {
+  width: 100%;
+}
+
+.zone-edit-help {
+  margin-top: 4px;
+  font-size: 10px;
+}
+
+.zone-edit-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.zone-edit-actions-right {
+  display: flex;
+  gap: 8px;
+}
+
+.zone-edit-btn {
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 12px;
+  border: none;
+  cursor: pointer;
+}
+
+.zone-edit-btn.cancel {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--c-white);
+}
+
+.zone-edit-btn.save {
+  background: var(--c-success-strong);
+  color: var(--c-black);
+}
+
+.zone-edit-btn:active {
+  transform: translateY(1px);
+}

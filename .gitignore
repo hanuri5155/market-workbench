@@ -1,0 +1,58 @@
+# Python (backend)
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+*.egg-info/
+*.dist-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage*
+.cache/
+
+# Environment / secrets
+.venv/
+venv/
+ENV/
+.env
+.env.*
+!deploy/.env.example
+
+# Backend runtime artifacts
+backend/**/logs/
+backend/**/*.log
+backend/**/storage/
+backend/**/sql/
+backend/**/*.sql
+backend/core/logs/
+backend/config/config.json
+
+# Runtime JSON snapshots
+backend/**/execution_data_store*.json
+backend/**/funding_snapshot*.json
+
+# Frontend (Vite)
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.playwright-system-libs/
+frontend/output/playwright/
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+Thumbs.db
+
+# Temporary files and generated bundles
+tmp/
+docs/ops/loadtest-results/
+*.tgz
+market-workbench-*.tar.gz
+deploy/data/
+db_spec_*.sql

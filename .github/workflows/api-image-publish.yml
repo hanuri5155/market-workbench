@@ -1,0 +1,114 @@
+name: API Image Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "API image tag to publish"
+        required: true
+        type: string
+      push_latest:
+        description: "Also publish ghcr latest tag"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish-api-image:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate image tag
+        shell: bash
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$IMAGE_TAG" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
+            echo "image_tag must start with a letter, number, or underscore and may only contain letters, numbers, underscore, dot, and hyphen" >&2
+            exit 1
+          fi
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare API image tags
+        id: image_tags
+        shell: bash
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/market-workbench-api
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          PUSH_LATEST: ${{ inputs.push_latest }}
+        run: |
+          set -euo pipefail
+          {
+            echo "tags<<EOF"
+            echo "${IMAGE}:${IMAGE_TAG}"
+            echo "${IMAGE}:${IMAGE_TAG}-${GITHUB_SHA}"
+            if [ "$PUSH_LATEST" = "true" ]; then
+              echo "${IMAGE}:latest"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      # API-only guardrail: no BOT image build/push and no deployment.
+      - name: Build & Push API image only
+        id: build_api
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile.api
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.image_tags.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.title=market-workbench-api
+
+      - name: Inspect API image
+        run: |
+          docker buildx imagetools inspect ghcr.io/${{ github.repository_owner }}/market-workbench-api:${{ inputs.image_tag }}
+
+      - name: Publish summary
+        shell: bash
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/market-workbench-api
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          PUSH_LATEST: ${{ inputs.push_latest }}
+          DIGEST: ${{ steps.build_api.outputs.digest }}
+        run: |
+          {
+            echo "### API Image Publish"
+            echo "- Image: \`${IMAGE}\`"
+            echo "- Primary tag: \`${IMAGE_TAG}\`"
+            echo "- Commit tag: \`${IMAGE_TAG}-${GITHUB_SHA}\`"
+            echo "- Latest tag published: \`${PUSH_LATEST}\`"
+            echo "- Source commit: \`${GITHUB_SHA}\`"
+            echo "- Digest: \`${DIGEST}\`"
+            echo "- Platforms: \`linux/amd64,linux/arm64\`"
+            echo "- Deploy performed: \`no\`"
+            echo "- Non-API image built: \`no\`"
+          } >> "$GITHUB_STEP_SUMMARY"

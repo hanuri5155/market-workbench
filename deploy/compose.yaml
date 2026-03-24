@@ -1,0 +1,133 @@
+services:
+  api:
+    image: ${API_IMAGE}
+    env_file:
+      - ${MARKET_WORKBENCH_ENV_FILE:-./.env}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+    networks:
+      - market-workbench-net
+    volumes:
+      - ${MARKET_WORKBENCH_ROOT:-/opt/market-workbench}/data/config:/app/backend/config:ro
+      - ${MARKET_WORKBENCH_ROOT:-/opt/market-workbench}/data/storage:/app/backend/storage
+      - ${MARKET_WORKBENCH_ROOT:-/opt/market-workbench}/logs/api:/app/backend/logs
+    healthcheck:
+      test: ["CMD","python","-c","import urllib.request,sys; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2).read(); sys.exit(0)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+
+  bot:
+    image: ${BOT_IMAGE}
+    env_file:
+      - ${MARKET_WORKBENCH_ENV_FILE:-./.env}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - market-workbench-net
+    volumes:
+      - ${MARKET_WORKBENCH_ROOT:-/opt/market-workbench}/data/config:/app/backend/config:ro
+      - ${MARKET_WORKBENCH_ROOT:-/opt/market-workbench}/data/storage:/app/backend/storage
+      - ${MARKET_WORKBENCH_ROOT:-/opt/market-workbench}/logs/bot:/app/backend/logs
+    healthcheck:
+      test: ["CMD","python","-c","import os,time,sys; p=os.getenv('BOT_HEARTBEAT_PATH','/tmp/bot_heartbeat'); sys.exit(0) if os.path.exists(p) and (time.time()-os.path.getmtime(p) < 60) else sys.exit(1)"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+
+  chart-storage:
+    profiles: ["nats-durable"]
+    image: ${CHART_STORAGE_IMAGE:-${API_IMAGE}}
+    command: ["python", "-m", "app.api.services.chart_nats_final_durable"]
+    env_file:
+      - ${MARKET_WORKBENCH_ENV_FILE:-./.env}
+    environment:
+      CHART_STORAGE_ENABLED: "true"
+      NATS_FINAL_DURABLE_ENABLED: "true"
+      NATS_FINAL_DURABLE_API_EMBEDDED_ENABLED: "false"
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_started
+      nats:
+        condition: service_healthy
+    networks:
+      - market-workbench-net
+    volumes:
+      - ${MARKET_WORKBENCH_ROOT:-/opt/market-workbench}/logs/chart-storage:/app/backend/logs
+    healthcheck:
+      test: ["CMD","python","-c","import pathlib,sys; cmd=pathlib.Path('/proc/1/cmdline').read_text(); sys.exit(0 if 'chart_nats_final_durable' in cmd else 1)"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+
+  mysql:
+    profiles: ["db"]
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-market_workbench}
+      MYSQL_USER: ${DB_USER:-market_workbench}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-market_workbenchpass}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
+    networks:
+      - market-workbench-net
+    volumes:
+      - ${MARKET_WORKBENCH_ROOT:-/opt/market-workbench}/data/mysql:/var/lib/mysql
+
+  nats:
+    image: nats:2-alpine
+    restart: unless-stopped
+    command:
+      [
+        "-js",
+        "-sd", "/data/jetstream",
+        "-m", "8222"
+      ]
+    networks:
+      - market-workbench-net
+    volumes:
+      - ${MARKET_WORKBENCH_ROOT:-/opt/market-workbench}/data/nats:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8222/healthz >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    profiles: ["redis-rollback"]
+    image: redis:7-alpine
+    restart: unless-stopped
+    command:
+      [
+        "redis-server",
+        "--appendonly", "no",
+        "--save", "",
+        "--maxmemory", "384mb",
+        "--maxmemory-policy", "noeviction"
+      ]
+    networks:
+      - market-workbench-net
+    volumes:
+      - ${MARKET_WORKBENCH_ROOT:-/opt/market-workbench}/data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+networks:
+  market-workbench-net:
+    external: true

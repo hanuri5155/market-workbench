@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Market Workbench API WebSocket active gateway metrics probe every minute
+
+[Timer]
+OnBootSec=2m
+OnUnitActiveSec=60s
+AccuracySec=10s
+Persistent=true
+
+[Install]
+WantedBy=timers.target

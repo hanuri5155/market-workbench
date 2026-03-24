@@ -1,0 +1,7 @@
+{
+  "simulation_mode": true,
+  "reconcile_closed_from_fills_on_start": false,
+  "entry_usd_volume": 100,
+  "buy_leverage": 1,
+  "sell_leverage": 1
+}

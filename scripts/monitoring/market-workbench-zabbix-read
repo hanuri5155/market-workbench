@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+METRICS_DIR="${MARKET_WORKBENCH_METRICS_DIR:-/var/lib/zabbix/market_workbench_metrics}"
+METRICS_FILES=(
+  "${METRICS_DIR}/metrics.tsv"
+  "${METRICS_DIR}/websocket.tsv"
+  "${METRICS_DIR}/api_ws.tsv"
+)
+
+if [[ $# -lt 1 || $# -gt 3 ]]; then
+  exit 2
+fi
+
+KEY="$1"
+ARG1="${2:--}"
+ARG2="${3:--}"
+
+read_metric() {
+  local key="$1"
+  local arg1="${2:--}"
+  local arg2="${3:--}"
+  local metrics_file value
+
+  for metrics_file in "${METRICS_FILES[@]}"; do
+    [[ -r "${metrics_file}" ]] || continue
+    if value="$(
+      awk -F '\t' -v k="${key}" -v a1="${arg1}" -v a2="${arg2}" '
+        $1 !~ /^#/ && $1 == k && $2 == a1 && $3 == a2 { value = $4; found = 1 }
+        END { if (found) { print value; exit 0 } exit 1 }
+      ' "${metrics_file}"
+    )"; then
+      printf '%s\n' "${value}"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+if [[ "${KEY}" == "probe.age_seconds" || "${KEY}" == "ws_probe.age_seconds" || "${KEY}" == "api_ws.age_seconds" ]]; then
+  LAST_SUCCESS="$(read_metric "${KEY%.age_seconds}.last_success_epoch" "-" "-")"
+  if [[ ! "${LAST_SUCCESS}" =~ ^[0-9]+$ || "${LAST_SUCCESS}" == "0" ]]; then
+    exit 1
+  fi
+  NOW="$(date +%s)"
+  if (( NOW < LAST_SUCCESS )); then
+    echo 0
+  else
+    echo "$((NOW - LAST_SUCCESS))"
+  fi
+  exit 0
+fi
+
+read_metric "${KEY}" "${ARG1}" "${ARG2}"

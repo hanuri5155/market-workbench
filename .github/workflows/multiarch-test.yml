@@ -1,0 +1,66 @@
+name: Multi-arch Test Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Test image tag"
+        required: true
+        default: "arm64-test"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & Push API multi-arch
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile.api
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/market-workbench-api:${{ inputs.image_tag }}
+            ghcr.io/${{ github.repository_owner }}/market-workbench-api:${{ inputs.image_tag }}-${{ github.sha }}
+
+      - name: Build & Push BOT multi-arch
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile.bot
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/market-workbench-bot:${{ inputs.image_tag }}
+            ghcr.io/${{ github.repository_owner }}/market-workbench-bot:${{ inputs.image_tag }}-${{ github.sha }}
+
+      - name: Inspect API image
+        run: |
+          docker buildx imagetools inspect ghcr.io/${{ github.repository_owner }}/market-workbench-api:${{ inputs.image_tag }}
+
+      - name: Inspect BOT image
+        run: |
+          docker buildx imagetools inspect ghcr.io/${{ github.repository_owner }}/market-workbench-bot:${{ inputs.image_tag }}

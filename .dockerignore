@@ -1,0 +1,14 @@
+**/.env
+backend/.env
+deploy/.env
+deploy/data/
+backend/logs/
+backend/storage/
+frontend/node_modules/
+frontend/dist/
+.git/
+**/__pycache__/
+**/*.pyc
+market-workbench-*.tgz
+market-workbench-*.tar.gz
+market-workbench-code-analysis-*.tar.gz

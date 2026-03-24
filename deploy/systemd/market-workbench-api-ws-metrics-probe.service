@@ -1,0 +1,15 @@
+[Unit]
+Description=Market Workbench API WebSocket active gateway metrics cache
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/local/sbin/market-workbench-api-ws-metrics-probe
+TimeoutStartSec=30
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+NoNewPrivileges=true
